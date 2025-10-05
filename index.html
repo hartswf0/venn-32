@@ -1,1 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>venn‑32 · Glowing Stack Index</title>
+<style>
+  :root{
+    --bg:#0a0d0f; --ink:#ecf1ea; --muted:#a9b3ac; --edge:#111a16;
+    --ui:#21ff86; --amber:#ffdca8; --orange:#ffb167; --cyan:#7de3ff; --neutral:#b8c4bd;
+    --tile:#0e1512; --tile2:#0c1310; --glow:0.9; --radius:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:radial-gradient(1200px 800px at 10% -10%,#0e1613 0%,#0a0d0f 45%,#080b09 100%);color:var(--ink);font:400 14px/1.5 system-ui,-apple-system,Segoe UI,Inter,Roboto,"Helvetica Neue",Arial}
+  a{color:inherit}
+  .app{min-height:100vh;display:flex;flex-direction:column}
+
+  /* Header */
+  header{position:sticky;top:0;z-index:10;backdrop-filter:saturate(115%) blur(6px);background:rgba(10,13,15,.78);border-bottom:1px solid #12231c}
+  .bar{display:flex;gap:.75rem;align-items:center;padding:.65rem clamp(.75rem,2vw,1rem)}
+  .title{font-weight:800;letter-spacing:.2px;font-size:clamp(16px,2.2vw,20px)}
+  .grow{flex:1}
+  .search{display:flex;align-items:center;gap:.5rem;background:#0d1613;border:1px solid #163026;border-radius:12px;padding:.5rem .75rem;min-width:220px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}
+  .search input{background:transparent;border:0;outline:0;width:100%;color:var(--ink);font:inherit}
+  .search kbd{font:600 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;color:#b3c1b9;opacity:.8}
+  .btn{appearance:none;border:1px solid #173025;background:#0d1613;color:var(--ink);padding:.5rem .7rem;border-radius:10px;cursor:pointer;transition:.15s transform ease, .15s box-shadow ease}
+  .btn:active{transform:translateY(1px)}
+
+  /* Family section */
+  section{padding:0 clamp(.75rem,2vw,1rem)}
+  .family{margin:1.2rem auto;max-width:1500px}
+  .family h2{position:sticky;top:52px;margin:0;padding:.4rem .6rem .55rem;border-left:6px solid #163b2c;background:linear-gradient(180deg,rgba(25,35,30,.75),rgba(20,30,26,.55));backdrop-filter:saturate(120%) blur(6px);border-radius:8px;color:#dfe9e2;font-weight:800;letter-spacing:.2px}
+  .chip{font:700 11px/1.1 ui-monospace,Menlo,monospace;opacity:.85;margin-left:.35rem;padding:.15rem .4rem;border-radius:999px;border:1px solid #214233}
+
+  /* Grid */
+  .grid{display:grid;gap:.9rem;margin:.8rem 0 1.6rem}
+  /* Responsive columns with cap 5 */
+  @media (max-width:420px){.grid{grid-template-columns:repeat(1,minmax(220px,1fr))}}
+  @media (min-width:421px) and (max-width:640px){.grid{grid-template-columns:repeat(2,minmax(200px,1fr))}}
+  @media (min-width:641px) and (max-width:900px){.grid{grid-template-columns:repeat(3,minmax(220px,1fr))}}
+  @media (min-width:901px) and (max-width:1200px){.grid{grid-template-columns:repeat(4,minmax(240px,1fr))}}
+  @media (min-width:1201px){.grid{grid-template-columns:repeat(5,minmax(250px,1fr))}}
+
+  /* Tile */
+  .tile{position:relative;isolation:isolate;border-radius:var(--radius);background:linear-gradient(180deg,var(--tile),var(--tile2));border:1px solid #132219;padding:1rem;min-height:120px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;outline:0;cursor:pointer;transition:transform .2s ease, box-shadow .2s ease, filter .2s ease}
+  .tile .label{font-weight:700;letter-spacing:.2px}
+  .tile .mini{font:600 11px/1.2 ui-monospace,Menlo,monospace;color:var(--muted)}
+  .tile::after{content:"";position:absolute;inset:-25%;z-index:-1;filter:blur(calc(24px * var(--glow)));opacity:.45;pointer-events:none;transition:opacity .2s ease}
+  .tile:hover{transform:translateY(-2px)}
+  .tile:hover::after{opacity:.7}
+  .glow-green::after{background:radial-gradient(40% 35% at 50% 40%,rgba(33,255,134,.20),transparent),radial-gradient(65% 55% at 50% 60%,rgba(33,255,134,.12),transparent)}
+  .glow-amber::after{background:radial-gradient(40% 35% at 50% 40%,rgba(255,220,168,.22),transparent),radial-gradient(65% 55% at 50% 60%,rgba(255,210,140,.14),transparent)}
+  .glow-orange::after{background:radial-gradient(40% 35% at 50% 40%,rgba(255,177,103,.22),transparent),radial-gradient(65% 55% at 50% 60%,rgba(255,150,80,.16),transparent)}
+  .glow-cyan::after{background:radial-gradient(40% 35% at 50% 40%,rgba(125,227,255,.22),transparent),radial-gradient(65% 55% at 50% 60%,rgba(110,210,250,.16),transparent)}
+  .neutral::after{background:radial-gradient(40% 35% at 50% 40%,rgba(184,196,189,.22),transparent),radial-gradient(65% 55% at 50% 60%,rgba(160,170,166,.16),transparent)}
+
+  /* Modal */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(6,8,10,.7);backdrop-filter:blur(8px) saturate(120%);z-index:30}
+  .modal.open{display:flex}
+  .panel{width:min(1100px,96vw);height:min(88vh,800px);border-radius:16px;overflow:hidden;border:1px solid #21362c;background:linear-gradient(180deg,#0e1714,#0a1210)}
+  .panel header{position:relative;background:linear-gradient(180deg,#0f1915,#0a1210);border-bottom:1px solid #1b2c23}
+  .panel .hdr{display:flex;align-items:center;gap:.5rem;padding:.6rem .8rem}
+  .panel .ttl{font-weight:800}
+  .spacer{flex:1}
+  .x{border-radius:8px}
+  .open{margin-left:.25rem}
+  .frameWrap{position:relative;width:100%;height:calc(100% - 44px);background:#000;display:flex;align-items:center;justify-content:center}
+  iframe{width:100%;height:100%;border:0}
+  .snow{position:absolute;inset:0;background:
+    repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0 2px,transparent 2px 4px),
+    radial-gradient(800px 500px at 20% 10%,rgba(255,255,255,.06),transparent 60%),
+    radial-gradient(800px 500px at 80% 90%,rgba(255,255,255,.05),transparent 60%);
+    animation:snow 1.6s steps(8) infinite;mix-blend-mode:screen;pointer-events:none}
+  @keyframes snow{to{transform:translateY(6px)}}
+  .fallback{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:1rem;color:#d5e0d9}
+  .fallback .btn{margin-top:.75rem}
+
+  /* Footer */
+  footer{opacity:.8;color:#b9c3bc;border-top:1px solid #0f1a15;margin-top:auto}
+  .foot{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;justify-content:space-between;padding:1rem clamp(.75rem,2vw,1rem)}
+  .legend{font:600 11px/1.2 ui-monospace,Menlo,monospace}
+  .legend span{margin-right:.8rem}
+  .dot{display:inline-block;width:.6em;height:.6em;border-radius:50%;margin-right:.25em}
+  .g{background:#2bff9a}.a{background:#ffdeaf}.o{background:#ffb167}.c{background:#7de3ff}.n{background:#b8c4bd}
+
+  /* Settings popover */
+  .popover{position:absolute;right:.5rem;top:3rem;background:#0e1714;border:1px solid #1b2c23;border-radius:12px;padding:.6rem;display:none;min-width:240px;box-shadow:0 6px 32px rgba(0,0,0,.35)}
+  .popover.open{display:block}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.3rem 0}
+  .row label{font-weight:600}
+  .range{width:130px}
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .tile{transition:none}
+    .tile:hover{transform:none}
+    .tile::after{opacity:.5}
+    .modal{backdrop-filter:none}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="bar" role="toolbar" aria-label="Top bar">
+      <div class="title">venn‑32 · Glowing Stack Index</div>
+      <div class="grow"></div>
+      <div class="search" aria-label="Search items">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 21l-4.35-4.35" stroke="#6aa992" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="q" type="search" placeholder="Search ( / )" autocomplete="off" aria-label="Search"/>
+        <kbd>/</kbd>
+      </div>
+      <button id="btnSettings" class="btn" aria-haspopup="true" aria-expanded="false" aria-controls="settings">Settings</button>
+      <div id="settings" class="popover" role="dialog" aria-modal="false" aria-label="Settings">
+        <div class="row"><label for="glow">Glow intensity</label><input id="glow" class="range" type="range" min="0" max="1.5" step="0.05"></div>
+        <div class="row"><label for="density">Density (cols)</label>
+          <select id="density" aria-label="Grid density">
+            <option value="auto">Auto (≤5)</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+        <div class="row"><button id="centerFamily" class="btn" title="Scroll current family into view">Center current family</button></div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main"></main>
+
+  <footer>
+    <div class="foot">
+      <div class="legend">
+        <span><span class="dot g"></span>RHM</span>
+        <span><span class="dot a"></span>Volumetric/Nexus</span>
+        <span><span class="dot o"></span>VOL Media</span>
+        <span><span class="dot c"></span>Stack Index</span>
+        <span><span class="dot n"></span>General</span>
+      </div>
+      <div>
+        <a class="btn" href="https://github.com/hartswf0/venn-32/tree/main" target="_blank" rel="noopener">Open Repo</a>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal" aria-hidden="true" role="dialog" aria-label="Preview">
+  <div class="panel" role="document">
+    <header>
+      <div class="hdr">
+        <div id="mdlTitle" class="ttl" aria-live="polite"></div>
+        <div class="spacer"></div>
+        <a id="openNew" class="btn open" href="#" target="_blank" rel="noopener">Open in new tab</a>
+        <button id="close" class="btn x" aria-label="Close">✕</button>
+      </div>
+    </header>
+    <div class="frameWrap">
+      <div class="snow" aria-hidden="true"></div>
+      <div id="fallback" class="fallback">
+        <div>
+          <div>Preview blocked by site policy or CORS.</div>
+          <a id="fallbackLink" class="btn" target="_blank" rel="noopener">Open in new tab</a>
+        </div>
+      </div>
+      <iframe id="frame" title="Stack preview" sandbox="allow-scripts allow-forms allow-same-origin allow-pointer-lock allow-downloads" referrerpolicy="no-referrer"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+// ======= DATA PACK (URLs relative to repo root) =======
+const DATA = {
+  "meta": {
+    "name": "venn-32 index",
+    "repo": "hartswf0/venn-32",
+    "branch": "main",
+    "notes": "Use url_relative for GitHub Pages or local hosting; url_raw is fallback if same-origin blocks."
+  },
+  "families": [
+    {
+      "id": "general",
+      "label": "General",
+      "style": "neutral",
+      "items": [
+        {"title":"README","file":"README.md","url_relative":"./README.md","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/README.md"},
+        {"title":"Index","file":"index.html","url_relative":"./index.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/index.html"},
+        {"title":"RHM visible layers (data)","file":"RHM_visible_layers.json","url_relative":"./RHM_visible_layers.json","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/RHM_visible_layers.json"}
+      ]
+    },
+    {
+      "id": "rhm",
+      "label": "RHM series",
+      "style": "glow-green",
+      "items": [
+        {"title":"RHM · 32 Layer Instrument","file":"rhm_32_layer_instrument.html","url_relative":"./rhm_32_layer_instrument.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_32_layer_instrument.html"},
+        {"title":"RHM · Cards on Face","file":"rhm_cards_on_face.html","url_relative":"./rhm_cards_on_face.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_cards_on_face.html"},
+        {"title":"RHM · Cards on Face v3","file":"rhm_cards_on_face_v3.html","url_relative":"./rhm_cards_on_face_v3.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_cards_on_face_v3.html"},
+        {"title":"RHM · Cards on Face v4","file":"rhm_cards_on_face_v4.html","url_relative":"./rhm_cards_on_face_v4.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_cards_on_face_v4.html"},
+        {"title":"RHM · Cards on Face v4a","file":"rhm_cards_on_face_v4a.html","url_relative":"./rhm_cards_on_face_v4a.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_cards_on_face_v4a.html"},
+        {"title":"RHM · Cards on Face v5","file":"rhm_cards_on_face_v5.html","url_relative":"./rhm_cards_on_face_v5.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_cards_on_face_v5.html"},
+        {"title":"RHM · Deck Overlap","file":"rhm_deck_overlap.html","url_relative":"./rhm_deck_overlap.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_deck_overlap.html"},
+        {"title":"RHM · DOM v7b","file":"rhm_dom_v7b.html","url_relative":"./rhm_dom_v7b.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_dom_v7b.html"},
+        {"title":"RHM · DOM v7c (mobile)","file":"rhm_dom_v7c_mobile.html","url_relative":"./rhm_dom_v7c_mobile.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_dom_v7c_mobile.html"},
+        {"title":"RHM · DOM v7d (mobile pro)","file":"rhm_dom_v7d_mobile_pro.html","url_relative":"./rhm_dom_v7d_mobile_pro.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_dom_v7d_mobile_pro.html"},
+        {"title":"RHM · DOM v7e (mobile cards)","file":"rhm_dom_v7e_mobile_cards.html","url_relative":"./rhm_dom_v7e_mobile_cards.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_dom_v7e_mobile_cards.html"},
+        {"title":"RHM · DOM v7f (fix stacks colors overlay)","file":"rhm_dom_v7f_fix_stacks_colors_overlay.html","url_relative":"./rhm_dom_v7f_fix_stacks_colors_overlay.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_dom_v7f_fix_stacks_colors_overlay.html"},
+        {"title":"RHM · DOM v7g (auto fit)","file":"rhm_dom_v7g_auto_fit.html","url_relative":"./rhm_dom_v7g_auto_fit.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_dom_v7g_auto_fit.html"},
+        {"title":"RHM · DOM v7h (read guaranteed)","file":"rhm_dom_v7h_read_guaranteed.html","url_relative":"./rhm_dom_v7h_read_guaranteed.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_dom_v7h_read_guaranteed.html"},
+        {"title":"RHM · Faces Reader (orig)","file":"rhm_faces_reader.html","url_relative":"./rhm_faces_reader.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_faces_reader.html"},
+        {"title":"RHM · Faces Reader (1)","file":"rhm_faces_reader (1).html","url_relative":"./rhm_faces_reader%20(1).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_faces_reader%20(1).html"},
+        {"title":"RHM · Faces Reader v2","file":"rhm_faces_reader_v2.html","url_relative":"./rhm_faces_reader_v2.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_faces_reader_v2.html"},
+        {"title":"RHM · Post-its (orig)","file":"rhm_postits.html","url_relative":"./rhm_postits.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_postits.html"},
+        {"title":"RHM · Post-its (1)","file":"rhm_postits (1).html","url_relative":"./rhm_postits%20(1).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_postits%20(1).html"},
+        {"title":"RHM · Three v9","file":"rhm_three_v9.html","url_relative":"./rhm_three_v9.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_three_v9.html"},
+        {"title":"RHM · Ultralite v8","file":"rhm_ultralite_v8.html","url_relative":"./rhm_ultralite_v8.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/rhm_ultralite_v8.html"}
+      ]
+    },
+    {
+      "id": "volumetric",
+      "label": "Volumetric / Venn / Nexus",
+      "style": "glow-amber",
+      "items": [
+        {"title":"Volumetric · Cube Stacks Overlap · Nexus (Gully)","file":"volumetric_cube_stacks_overlap_nexus_gully_edition.html","url_relative":"./volumetric_cube_stacks_overlap_nexus_gully_edition.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_cube_stacks_overlap_nexus_gully_edition.html"},
+        {"title":"Volumetric · Cube Stacks Overlap · Nexus (Gully) (1)","file":"volumetric_cube_stacks_overlap_nexus_gully_edition (1).html","url_relative":"./volumetric_cube_stacks_overlap_nexus_gully_edition%20(1).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_cube_stacks_overlap_nexus_gully_edition%20(1).html"},
+        {"title":"Volumetric · Media Nexus · Unthinkable Applied","file":"volumetric_media_nexus_unthinkable_applied.html","url_relative":"./volumetric_media_nexus_unthinkable_applied.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_media_nexus_unthinkable_applied.html"},
+        {"title":"Volumetric · Media Nexus · Unthinkable Applied (1)","file":"volumetric_media_nexus_unthinkable_applied (1).html","url_relative":"./volumetric_media_nexus_unthinkable_applied%20(1).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_media_nexus_unthinkable_applied%20(1).html"},
+        {"title":"Volumetric · Media Nexus · Unthinkable Applied (2)","file":"volumetric_media_nexus_unthinkable_applied (2).html","url_relative":"./volumetric_media_nexus_unthinkable_applied%20(2).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_media_nexus_unthinkable_applied%20(2).html"},
+        {"title":"Volumetric · Media Nexus · Unthinkable Applied (3)","file":"volumetric_media_nexus_unthinkable_applied (3).html","url_relative":"./volumetric_media_nexus_unthinkable_applied%20(3).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_media_nexus_unthinkable_applied%20(3).html"},
+        {"title":"Volumetric · Media Nexus · Unthinkable Applied (4)","file":"volumetric_media_nexus_unthinkable_applied (4).html","url_relative":"./volumetric_media_nexus_unthinkable_applied%20(4).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_media_nexus_unthinkable_applied%20(4).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock","file":"volumetric_venn_cubes_mobile_draggable_dock.html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock.html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (1)","file":"volumetric_venn_cubes_mobile_draggable_dock (1).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(1).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(1).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (2)","file":"volumetric_venn_cubes_mobile_draggable_dock (2).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(2).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(2).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (3)","file":"volumetric_venn_cubes_mobile_draggable_dock (3).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(3).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(3).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (4)","file":"volumetric_venn_cubes_mobile_draggable_dock (4).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(4).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(4).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (5)","file":"volumetric_venn_cubes_mobile_draggable_dock (5).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(5).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(5).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (6)","file":"volumetric_venn_cubes_mobile_draggable_dock (6).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(6).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(6).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (7)","file":"volumetric_venn_cubes_mobile_draggable_dock (7).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(7).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(7).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (8)","file":"volumetric_venn_cubes_mobile_draggable_dock (8).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(8).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(8).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (9)","file":"volumetric_venn_cubes_mobile_draggable_dock (9).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(9).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(9).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (10)","file":"volumetric_venn_cubes_mobile_draggable_dock (10).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(10).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(10).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (11)","file":"volumetric_venn_cubes_mobile_draggable_dock (11).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(11).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(11).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (12)","file":"volumetric_venn_cubes_mobile_draggable_dock (12).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(12).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(12).html"},
+        {"title":"Volumetric · Venn Cubes · Mobile Draggable Dock (13)","file":"volumetric_venn_cubes_mobile_draggable_dock (13).html","url_relative":"./volumetric_venn_cubes_mobile_draggable_dock%20(13).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/volumetric_venn_cubes_mobile_draggable_dock%20(13).html"}
+      ]
+    },
+    {
+      "id": "vol_media",
+      "label": "VOL Media Decks",
+      "style": "glow-orange",
+      "items": [
+        {"title":"VOL Media Decks v6","file":"vol_media_decks_v6.html","url_relative":"./vol_media_decks_v6.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/vol_media_decks_v6.html"},
+        {"title":"VOL Media Decks v7","file":"vol_media_decks_v7.html","url_relative":"./vol_media_decks_v7.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/vol_media_decks_v7.html"},
+        {"title":"VOL Media Decks v5 · Canvas Only Data Stacks","file":"vol_media_decks_v_5_canvas_only_data_stacks.html","url_relative":"./vol_media_decks_v_5_canvas_only_data_stacks.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/vol_media_decks_v_5_canvas_only_data_stacks.html"},
+        {"title":"VOL Media Decks v5 · Canvas Only Data Stacks (1)","file":"vol_media_decks_v_5_canvas_only_data_stacks (1).html","url_relative":"./vol_media_decks_v_5_canvas_only_data_stacks%20(1).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/vol_media_decks_v_5_canvas_only_data_stacks%20(1).html"},
+        {"title":"VOL Media Decks v5 · Canvas Only Data Stacks (2)","file":"vol_media_decks_v_5_canvas_only_data_stacks (2).html","url_relative":"./vol_media_decks_v_5_canvas_only_data_stacks%20(2).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/vol_media_decks_v_5_canvas_only_data_stacks%20(2).html"},
+        {"title":"VOL Media Decks v5 · Canvas Only Data Stacks (3)","file":"vol_media_decks_v_5_canvas_only_data_stacks (3).html","url_relative":"./vol_media_decks_v_5_canvas_only_data_stacks%20(3).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/vol_media_decks_v_5_canvas_only_data_stacks%20(3).html"}
+      ]
+    },
+    {
+      "id": "stack_index",
+      "label": "Stack Index (Minimal Preview)",
+      "style": "glow-cyan",
+      "items": [
+        {"title":"Stack Index · Minimal Preview","file":"stack_index_minimal_preview_single_file_html.html","url_relative":"./stack_index_minimal_preview_single_file_html.html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/stack_index_minimal_preview_single_file_html.html"},
+        {"title":"Stack Index · Minimal Preview (1)","file":"stack_index_minimal_preview_single_file_html (1).html","url_relative":"./stack_index_minimal_preview_single_file_html%20(1).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/stack_index_minimal_preview_single_file_html%20(1).html"},
+        {"title":"Stack Index · Minimal Preview (2)","file":"stack_index_minimal_preview_single_file_html (2).html","url_relative":"./stack_index_minimal_preview_single_file_html%20(2).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/stack_index_minimal_preview_single_file_html%20(2).html"},
+        {"title":"Stack Index · Minimal Preview (3)","file":"stack_index_minimal_preview_single_file_html (3).html","url_relative":"./stack_index_minimal_preview_single_file_html%20(3).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/stack_index_minimal_preview_single_file_html%20(3).html"},
+        {"title":"Stack Index · Minimal Preview (4)","file":"stack_index_minimal_preview_single_file_html (4).html","url_relative":"./stack_index_minimal_preview_single_file_html%20(4).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/stack_index_minimal_preview_single_file_html%20(4).html"},
+        {"title":"Stack Index · Minimal Preview (5)","file":"stack_index_minimal_preview_single_file_html (5).html","url_relative":"./stack_index_minimal_preview_single_file_html%20(5).html","url_raw":"https://raw.githubusercontent.com/hartswf0/venn-32/main/stack_index_minimal_preview_single_file_html%20(5).html"}
+      ]
+    }
+  ]
+};
+
+// ======= UTIL =======
+const qs = (s, el=document)=> el.querySelector(s);
+const qsa = (s, el=document)=> Array.from(el.querySelectorAll(s));
+const PAGES_BASE = 'https://hartswf0.github.io/venn-32/';
+const SIMPLE_SUFFIX = '?simple';
+function encodePath(name){
+  return encodeURIComponent(name).replace(/%2F/g,'/');
+}
+const store = {
+  get(k, d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch{ return d } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch{} }
+};
+
+const state = {
+  filter: '',
+  density: store.get('v32:density','auto'),
+  glow: store.get('v32:glow', 1),
+  current: null // { familyId, index }
+};
+
+// ======= RENDER =======
+function render(){
+  document.documentElement.style.setProperty('--glow', state.glow);
+  const main = qs('#main');
+  main.innerHTML = '';
+  DATA.families.forEach(fam => {
+    const sect = document.createElement('section');
+    sect.className = 'family';
+    sect.id = `fam-${fam.id}`;
+
+    const h2 = document.createElement('h2');
+    h2.innerHTML = `${fam.label} <span class="chip">${fam.id}</span>`;
+    sect.appendChild(h2);
+
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    if (state.density !== 'auto') grid.style.gridTemplateColumns = `repeat(${Math.min(5, Math.max(3, +state.density))}, minmax(240px, 1fr))`;
+
+    fam.items
+      .filter(it => matches(it, state.filter))
+      .forEach((it, idx) => grid.appendChild(tile(fam, it, idx)));
+
+    sect.appendChild(grid);
+    main.appendChild(sect);
+  });
+}
+
+function matches(it, f){
+  if (!f) return true;
+  f = f.toLowerCase();
+  return it.title.toLowerCase().includes(f) || it.file.toLowerCase().includes(f);
+}
+
+function tile(fam, it, idx){
+  const b = document.createElement('button');
+  b.className = `tile ${fam.style}`;
+  b.setAttribute('aria-label', `Open ${it.title}`);
+  b.innerHTML = `<div class="label">${it.title}</div><div class="mini">${it.file}</div>`;
+  b.addEventListener('click', () => openModal(fam.id, idx));
+  return b;
+}
+
+// ======= MODAL LOGIC =======
+const modal = qs('#modal');
+const frame = qs('#frame');
+const fallback = qs('#fallback');
+const fallbackLink = qs('#fallbackLink');
+const mdlTitle = qs('#mdlTitle');
+const openNew = qs('#openNew');
+
+function openModal(familyId, index){
+  state.current = { familyId, index };
+  const fam = DATA.families.find(f => f.id === familyId);
+  const it = fam.items[index];
+
+  // Always use GitHub Pages + ?simple
+  const pageURL = PAGES_BASE + encodePath(it.file) + SIMPLE_SUFFIX;
+
+  mdlTitle.textContent = it.title;
+  openNew.href = pageURL;
+  fallbackLink.href = pageURL;
+
+  fallback.style.display = 'none';
+  qs('.snow').style.display = 'block';
+  frame.removeAttribute('src');
+  frame.src = pageURL;
+
+  let errored = false;
+  frame.onerror = () => { if (!errored){ errored = true; fallback.style.display = 'flex'; qs('.snow').style.display = 'none'; } };
+  frame.onload = () => { qs('.snow').style.display = 'none'; };
+
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden';
+  store.set('v32:last', state.current);
+}
+
+function closeModal(){
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
+  frame.removeAttribute('src');
+}
+
+qs('#close').addEventListener('click', closeModal);
+modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
+
+// Keyboard + swipe
+window.addEventListener('keydown', e => {
+  if (e.key === '/') { e.preventDefault(); qs('#q').focus(); return; }
+  if (!modal.classList.contains('open')) return;
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'ArrowLeft') nav(-1);
+  if (e.key === 'ArrowRight') nav(1);
+});
+
+let touchX = null;
+modal.addEventListener('touchstart', e => { touchX = e.changedTouches[0].clientX; }, {passive:true});
+modal.addEventListener('touchend', e => {
+  if (touchX == null) return; const dx = e.changedTouches[0].clientX - touchX; touchX=null;
+  if (Math.abs(dx) > 50) nav(dx>0?-1:1);
+});
+
+function nav(dir){
+  const cur = state.current; if (!cur) return;
+  const fam = DATA.families.find(f => f.id === cur.familyId);
+  let i = cur.index + dir; if (i<0) i = fam.items.length-1; if (i>=fam.items.length) i = 0;
+  openModal(fam.id, i);
+}
+
+// ======= SEARCH & SETTINGS =======
+const q = qs('#q');
+q.value = state.filter;
+q.addEventListener('input', debounce(()=>{ state.filter = q.value.trim(); render(); }, 120));
+window.addEventListener('keydown', e => { if (e.key === '/' && document.activeElement !== q){ e.preventDefault(); q.focus(); }});
+
+const btnSettings = qs('#btnSettings');
+const pop = qs('#settings');
+btnSettings.addEventListener('click', () => {
+  const open = pop.classList.toggle('open');
+  btnSettings.setAttribute('aria-expanded', open? 'true':'false');
+});
+
+qs('#glow').value = state.glow;
+qs('#glow').addEventListener('input', e => { state.glow = +e.target.value; document.documentElement.style.setProperty('--glow', state.glow); store.set('v32:glow', state.glow); });
+
+const density = qs('#density');
+density.value = state.density;
+density.addEventListener('change', ()=>{ state.density = density.value; store.set('v32:density', state.density); render(); });
+
+qs('#centerFamily').addEventListener('click', ()=>{
+  if (!state.current) return; const el = qs(`#fam-${state.current.familyId}`); if (el) el.scrollIntoView({behavior:'smooth', block:'center'});
+});
+
+// ======= INIT =======
+function init(){
+  render();
+  const last = store.get('v32:last', null);
+  if (last){ state.current = last; }
+}
+
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(null,a),ms); } }
+
+init();
+</script>
+</body>
+</html>
 
